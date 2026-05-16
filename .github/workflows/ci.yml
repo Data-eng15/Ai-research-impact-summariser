@@ -40,7 +40,7 @@ jobs:
       - name: Run tests
         run: |
           cd frontend
-          npm test -- --ci --coverage --passWithNoTests
+          npm test -- --coverage --passWithNoTests
 
   docker-build:
     needs: [backend-test, frontend-test]
