@@ -1,0 +1,10 @@
+runConfig:
+  runtime: python311
+  entrypoint: uvicorn app.main:app --host 0.0.0.0 --port 8080
+  minInstances: 0
+
+env:
+  - variable: PYTHONUNBUFFERED
+    value: "1"
+  - variable: ENABLE_HF_GENERATION
+    value: "0"

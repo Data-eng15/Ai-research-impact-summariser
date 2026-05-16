@@ -73,7 +73,7 @@ export default function Dashboard() {
     }
     setLoading(true); setError(null); setResult(null);
     try {
-      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+      const API_URL = import.meta.env.VITE_API_URL || "/_/backend";
       const res = await fetch(`${API_URL}/api/analyze`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: sq }) });
       if (!res.ok) throw new Error(`API returned ${res.status}`);
       const data = await res.json() as AnalyzeResponse;
