@@ -32,3 +32,6 @@ Dockerfile.*
 # Misc
 .idea/
 .vscode/
+.venv/
+backend/.data/
+frontend/dist/
