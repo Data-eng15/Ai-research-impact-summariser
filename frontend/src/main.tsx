@@ -16,7 +16,7 @@ function App() {
           path="/" 
           element={
             <>
-              <LandingPage onLoginClick={() => setShowLogin(true)} />
+              <LandingPage onLogin={() => setShowLogin(true)} />
               {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
             </>
           } 
