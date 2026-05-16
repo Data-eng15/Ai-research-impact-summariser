@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+.env
+
+# Node
+node_modules/
+
+# Vite
+dist/
+build/
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+
+# Pytest coverage
+htmlcov/
+.coverage
+
+# Docker
+Dockerfile
+Dockerfile.*
+.dockerignore
+
+# Misc
+.idea/
+.vscode/

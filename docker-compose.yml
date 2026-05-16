@@ -1,0 +1,30 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8080
+      - SEMANTIC_SCHOLAR_API_KEY=${SEMANTIC_SCHOLAR_API_KEY}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - ENABLE_HF_GENERATION=${ENABLE_HF_GENERATION}
+      - HF_GENERATION_MODEL=${HF_GENERATION_MODEL}
+    volumes:
+      - ./backend/.data:/app/.data
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # In a real deployment, this would point to your production API URL
+        # For local Docker Compose, localhost:8000 works because the browser makes the request
+        VITE_API_URL: http://localhost:8000
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
