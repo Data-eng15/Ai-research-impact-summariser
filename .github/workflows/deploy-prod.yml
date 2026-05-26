@@ -1,0 +1,90 @@
+name: Deploy — Production
+
+# Triggers only on push/merge to main
+on:
+  push:
+    branches: [main]
+
+jobs:
+  # ── Run CI first ──────────────────────────────────────────────────
+  test:
+    name: Run CI before deploy
+    uses: ./.github/workflows/ci.yml
+
+  # ── Deploy backend to Railway (production service) ────────────────
+  deploy-backend-prod:
+    name: Deploy backend → Railway production
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.PROD_API_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy to Railway production
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_PROD }}
+        run: |
+          cd backend
+          railway up --service impact-lab-api --detach
+
+      - name: Health check
+        run: |
+          sleep 20
+          curl --fail ${{ vars.PROD_API_URL }}/health || exit 1
+          echo "Health check passed"
+
+  # ── Deploy frontend to Vercel (production) ────────────────────────
+  deploy-frontend-prod:
+    name: Deploy frontend → Vercel production
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.PROD_FRONTEND_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Vercel production
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: "--prod"
+          working-directory: ./frontend
+        env:
+          VITE_API_URL: ${{ vars.PROD_API_URL }}
+
+  # ── Create GitHub release ─────────────────────────────────────────
+  create-release:
+    name: Create GitHub release
+    needs: [deploy-backend-prod, deploy-frontend-prod]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: "Release v${{ github.run_number }}"
+          body: |
+            ## Production Deploy
+
+            Deployed from commit ${{ github.sha }} by @${{ github.actor }}
+
+            | Service | URL |
+            |---|---|
+            | Frontend | ${{ vars.PROD_FRONTEND_URL }} |
+            | API | ${{ vars.PROD_API_URL }} |
+          generate_release_notes: true
+          draft: false

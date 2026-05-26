@@ -1,53 +1,72 @@
-name: CI/CD Pipeline
+name: CI — Test & Build
 
 on:
   push:
-    branches: [ main ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main, develop]
 
 jobs:
+  # ── Backend tests ─────────────────────────────────────────────────
   backend-test:
+    name: Backend tests (Python 3.11)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Python 3.11
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
+          cache: pip
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
-          pip install pytest httpx responses pytest-cov
-      - name: Run tests with coverage
+          pip install pytest httpx pytest-cov pytest-asyncio
+
+      - name: Run backend tests
+        env:
+          GOOGLE_API_KEY: ""
+          DEMO_MODE: "true"
         run: |
           cd backend
-          pytest --cov=app tests/
+          pytest tests/ --cov=app --cov-report=term-missing -q
 
+  # ── Frontend tests ────────────────────────────────────────────────
   frontend-test:
+    name: Frontend tests (Node 20)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-      - name: Install dependencies
-        run: |
-          cd frontend
-          npm ci
-      - name: Run tests
-        run: |
-          cd frontend
-          npm test -- --coverage --passWithNoTests
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
+      - name: Install dependencies
+        run: cd frontend && npm ci
+
+      - name: Type-check
+        run: cd frontend && npx tsc --noEmit
+
+      - name: Run frontend tests
+        run: cd frontend && npm test -- --passWithNoTests
+
+  # ── Docker build validation ───────────────────────────────────────
   docker-build:
+    name: Docker build check
     needs: [backend-test, frontend-test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build Backend Image
-        run: docker build -f docker/Dockerfile.backend -t ai-research-summariser-backend .
-      - name: Build Frontend Image
-        run: docker build -f frontend/Dockerfile -t ai-research-summariser-frontend ./frontend
+
+      - name: Build backend image
+        run: docker build -t impact-lab-backend ./backend
+
+      - name: Build frontend image
+        run: docker build --build-arg VITE_API_URL=https://api.example.com -t impact-lab-frontend ./frontend

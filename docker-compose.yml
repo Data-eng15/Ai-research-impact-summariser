@@ -1,4 +1,10 @@
-version: "3.8"
+# ─────────────────────────────────────────────────────────────────────────────
+# LOCAL DEVELOPMENT — docker-compose.yml
+# Usage: docker compose up
+# Hot reload is enabled for backend. Frontend runs via Vite dev server.
+# ─────────────────────────────────────────────────────────────────────────────
+
+version: "3.9"
 
 services:
   backend:
@@ -7,24 +13,32 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    env_file:
+      - ./backend/.env
     environment:
       - ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8080
-      - SEMANTIC_SCHOLAR_API_KEY=${SEMANTIC_SCHOLAR_API_KEY}
-      - GITHUB_TOKEN=${GITHUB_TOKEN}
-      - ENABLE_HF_GENERATION=${ENABLE_HF_GENERATION}
-      - HF_GENERATION_MODEL=${HF_GENERATION_MODEL}
     volumes:
-      - ./backend/.data:/app/.data
+      - ./backend/app:/app/app          # hot reload: code changes reflected immediately
+      - ./backend/.data:/app/.data      # persist ChromaDB + SQLite between restarts
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        # In a real deployment, this would point to your production API URL
-        # For local Docker Compose, localhost:8000 works because the browser makes the request
         VITE_API_URL: http://localhost:8000
     ports:
       - "8080:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+
+volumes:
+  chroma_data:

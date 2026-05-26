@@ -1,0 +1,73 @@
+name: Deploy — Staging
+
+# Triggers on every push to develop branch
+on:
+  push:
+    branches: [develop]
+
+jobs:
+  # ── Run CI first ──────────────────────────────────────────────────
+  test:
+    name: Run CI before deploy
+    uses: ./.github/workflows/ci.yml
+
+  # ── Deploy backend to Railway (staging service) ───────────────────
+  deploy-backend-staging:
+    name: Deploy backend → Railway staging
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: ${{ vars.STAGING_API_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy to Railway staging
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_STAGING }}
+        run: |
+          cd backend
+          railway up --service impact-lab-api-staging --detach
+
+  # ── Deploy frontend to Vercel (preview) ───────────────────────────
+  deploy-frontend-staging:
+    name: Deploy frontend → Vercel preview
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: ${{ steps.deploy.outputs.preview-url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Vercel preview
+        id: deploy
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: ./frontend
+          github-comment: true
+          alias-domains: staging-impact-lab.vercel.app
+        env:
+          VITE_API_URL: ${{ vars.STAGING_API_URL }}
+
+  # ── Post deploy summary ───────────────────────────────────────────
+  staging-summary:
+    name: Staging deploy summary
+    needs: [deploy-backend-staging, deploy-frontend-staging]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summary
+        run: |
+          echo "## Staging Deploy Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | URL |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend | https://staging-impact-lab.vercel.app |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend API | ${{ vars.STAGING_API_URL }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Health check | ${{ vars.STAGING_API_URL }}/health |" >> $GITHUB_STEP_SUMMARY

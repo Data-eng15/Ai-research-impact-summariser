@@ -4,14 +4,22 @@ __pycache__/
 *.pyo
 *.pyd
 .venv/
+
+# Env files — actual secrets (never commit)
 .env
+backend/.env
+# Allow per-environment frontend config (no secrets, just API URLs)
+!frontend/.env.development
+!frontend/.env.staging
+!frontend/.env.production
 
 # Node
 node_modules/
 
-# Vite
+# Vite build output
 dist/
 build/
+frontend/dist/
 
 # Logs
 logs/
@@ -24,14 +32,11 @@ logs/
 htmlcov/
 .coverage
 
-# Docker
-Dockerfile
-Dockerfile.*
-.dockerignore
+# Local data (ChromaDB + SQLite)
+backend/.data/
 
 # Misc
 .idea/
 .vscode/
-.venv/
-backend/.data/
-frontend/dist/
+.claude/
+frontend/.claude/

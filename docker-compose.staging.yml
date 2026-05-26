@@ -1,0 +1,39 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGING — docker-compose.staging.yml
+# Usage: docker compose -f docker-compose.staging.yml up -d
+# Used by Railway for staging service deployment.
+# No hot reload. Uses staging API URL.
+# ─────────────────────────────────────────────────────────────────────────────
+
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+      - DEMO_MODE=true
+      - ALLOWED_ORIGINS=https://staging-impact-lab.vercel.app,http://localhost:5173
+      - SEMANTIC_SCHOLAR_API_KEY=${SEMANTIC_SCHOLAR_API_KEY:-}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - LINKEDIN_CLIENT_ID=${LINKEDIN_CLIENT_ID:-}
+      - LINKEDIN_CLIENT_SECRET=${LINKEDIN_CLIENT_SECRET:-}
+      - LINKEDIN_SECRET=${LINKEDIN_SECRET:-staging_secret}
+    volumes:
+      - staging_data:/app/.data
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+volumes:
+  staging_data:
